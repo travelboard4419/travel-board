@@ -347,7 +347,7 @@ def validate_id(val):
         return False, None
 
 # ========== CLEANUP ==========
-last_cleanup = datetime.min
+last_cleanup = datetime.min.replace(tzinfo=timezone.utc)
 
 def cleanup_old_posts():
     global last_cleanup

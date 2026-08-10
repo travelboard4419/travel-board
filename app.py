@@ -71,13 +71,17 @@ def add_security_headers(response):
         "connect-src 'self'; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
-        "form-action 'self'"
+        "form-action 'self'; "
+        "upgrade-insecure-requests"
     )
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = (
         'accelerometer=(), camera=(), geolocation=(), gyroscope=(), '
         'magnetometer=(), microphone=(), payment=(), usb=()'
     )
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+    response.headers['X-Robots-Tag'] = 'noindex, nofollow'
     if request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https':
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     # Prevent caching of sensitive API responses
@@ -95,8 +99,7 @@ def force_https():
 # ========== RATE LIMITING (PostgreSQL-backed, atomic) ==========
 def check_rate_limit(key, max_req=5, window=3600):
     """Atomic rate limiting using PostgreSQL UPSERT."""
-    # datetime.utcnow() removed in Python 3.14; keep naive for DB compatibility
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.utcnow()
     window_start = now - timedelta(seconds=window)
     conn = get_db()
     c = conn.cursor()
@@ -140,11 +143,38 @@ def hash_phone_for_rate_limit(phone):
     """HMAC phone number so raw phone is not used as rate-limit key."""
     return hmac.new(SECRET_KEY.encode(), phone.encode(), hashlib.sha256).hexdigest()[:16]
 
+# ========== CLOUDFLARE TURNSTILE (optional bot protection) ==========
+TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY")
+TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
+
+def verify_turnstile(token):
+    """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
+    if not TURNSTILE_SECRET_KEY:
+        return True
+    if not token:
+        return True
+    try:
+        import urllib.request
+        import urllib.parse
+        data = urllib.parse.urlencode({
+            'secret': TURNSTILE_SECRET_KEY,
+            'response': token
+        }).encode()
+        req = urllib.request.Request(TURNSTILE_VERIFY_URL, data=data, method='POST')
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            result = json.loads(resp.read())
+            if not result.get('success'):
+                logger.warning("Turnstile verification failed: %s", result.get('error-codes'))
+            return result.get('success', False)
+    except Exception as e:
+        logger.error("Turnstile verification error: %s", e)
+        return True
+
 # ========== SESSION MANAGEMENT (Server-side, PostgreSQL-backed) ==========
 def create_session(data, expires_hours=2):
     session_id = secrets.token_urlsafe(32)
-    # datetime.utcnow() removed in Python 3.14; keep naive for DB compatibility
-    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=expires_hours)
+    expires_at = datetime.utcnow() + timedelta(hours=expires_hours)
     conn = get_db()
     try:
         c = conn.cursor()
@@ -173,8 +203,7 @@ def get_session(session_id):
         if not row:
             return None
         data_raw, expires_at = row[0], row[1]
-        # datetime.utcnow() removed in Python 3.14; keep naive for DB compatibility
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        now = datetime.utcnow()
         if expires_at.tzinfo is not None:
             now = datetime.now(expires_at.tzinfo)
         if expires_at < now:
@@ -298,6 +327,19 @@ def validate_name(name):
         return False, 'Името е твърде дълго'
     return True, name.strip()
 
+def check_recent_duplicate(c, table, origin, destination, date_str, time_str, phone, window_minutes=10):
+    """Check if an identical post was created very recently."""
+    if table not in ('journeys', 'ride_requests'):
+        return False
+    since = datetime.utcnow() - timedelta(minutes=window_minutes)
+    c.execute(f"""
+        SELECT id FROM {table}
+        WHERE origin = %s AND destination = %s AND date = %s AND time = %s
+        AND contact_phone = %s AND created_at > %s
+        LIMIT 1
+    """, (origin, destination, date_str, time_str, phone, since))
+    return c.fetchone() is not None
+
 def validate_id(val):
     try:
         return True, int(val)
@@ -305,17 +347,11 @@ def validate_id(val):
         return False, None
 
 # ========== CLEANUP ==========
-# Use timezone-aware UTC to avoid offset-naive vs offset-aware TypeErrors on Python 3.14+
-last_cleanup = datetime.min.replace(tzinfo=timezone.utc)
+last_cleanup = datetime.min
 
 def cleanup_old_posts():
     global last_cleanup
     now = datetime.now(timezone.utc)
-    
-    # Defensive: if last_cleanup was ever stored/passed as naive UTC, normalize it
-    # so the subtraction never crashes regardless of where the value came from.
-    if last_cleanup.tzinfo is None:
-        last_cleanup = last_cleanup.replace(tzinfo=timezone.utc)
     if now - last_cleanup < timedelta(hours=1):
         return
     last_cleanup = now
@@ -332,13 +368,10 @@ def cleanup_old_posts():
             "DELETE FROM ride_requests WHERE date < %s",
             (today_str,)
         )
-        # DB columns are TIMESTAMP WITHOUT TIME ZONE; pass naive UTC to avoid
-        # PostgreSQL timezone conversions.
-        naive_now = now.replace(tzinfo=None)
-        c.execute("DELETE FROM sessions WHERE expires_at < %s", (naive_now,))
+        c.execute("DELETE FROM sessions WHERE expires_at < %s", (now,))
         c.execute(
             "DELETE FROM rate_limits WHERE window_start < %s",
-            (naive_now - timedelta(hours=24),)
+            (now - timedelta(hours=24),)
         )
         conn.commit()
         logger.info("Cleanup completed")
@@ -408,12 +441,21 @@ def create_journey():
     except (ValueError, TypeError):
         seats = 1
 
+    # Optional bot protection (frontend can send turnstile_token when ready)
+    turnstile_token = data.get('turnstile_token', '')
+    if not verify_turnstile(turnstile_token):
+        return jsonify({'error': 'Bot verification failed. Моля, опитайте отново.'}), 403
+
     mgmt_code = generate_mgmt_code()
     mgmt_hash = hash_code(mgmt_code)
 
     conn = get_db()
     c = db_cursor(conn)
     try:
+        # Duplicate/spam protection
+        if check_recent_duplicate(c, 'journeys', origin, destination, date_str, time_str, phone, window_minutes=10):
+            return jsonify({'error': 'Вече има публикувана идентична обява от този телефон преди малко. Моля, изчакайте няколко минути или редактирайте съществуващата.'}), 429
+
         c.execute("""
             INSERT INTO journeys (origin, destination, date, time, seats, contact_name, contact_phone, mgmt_code_hash)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -449,6 +491,10 @@ def get_journeys():
         valid, _ = validate_date_str(date_q)
         if not valid:
             return jsonify({'error': 'Невалидна дата'}), 400
+
+    ip = get_client_ip()
+    if not check_rate_limit(f'list_ip:{ip}', max_req=60, window=300):
+        return jsonify({'error': 'Твърде много заявки. Опитайте отново след малко.'}), 429
 
     conn = get_db()
     c = db_cursor(conn)
@@ -575,12 +621,21 @@ def create_request():
     except (ValueError, TypeError):
         people = 1
 
+    # Optional bot protection (frontend can send turnstile_token when ready)
+    turnstile_token = data.get('turnstile_token', '')
+    if not verify_turnstile(turnstile_token):
+        return jsonify({'error': 'Bot verification failed. Моля, опитайте отново.'}), 403
+
     mgmt_code = generate_mgmt_code()
     mgmt_hash = hash_code(mgmt_code)
 
     conn = get_db()
     c = db_cursor(conn)
     try:
+        # Duplicate/spam protection
+        if check_recent_duplicate(c, 'ride_requests', origin, destination, date_str, time_str, phone, window_minutes=10):
+            return jsonify({'error': 'Вече има публикувана идентична заявка от този телефон преди малко. Моля, изчакайте няколко минути или редактирайте съществуващата.'}), 429
+
         c.execute("""
             INSERT INTO ride_requests (origin, destination, date, time, people, contact_name, contact_phone, mgmt_code_hash)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -616,6 +671,10 @@ def get_requests():
         valid, _ = validate_date_str(date_q)
         if not valid:
             return jsonify({'error': 'Невалидна дата'}), 400
+
+    ip = get_client_ip()
+    if not check_rate_limit(f'list_ip:{ip}', max_req=60, window=300):
+        return jsonify({'error': 'Твърде много заявки. Опитайте отново след малко.'}), 429
 
     conn = get_db()
     c = db_cursor(conn)
@@ -1074,31 +1133,42 @@ def stats():
         put_db(conn)
 
 
-@app.route('/api/debug/time', methods=['GET'])
-def debug_time():
-    now = datetime.now(timezone.utc)
-    return jsonify({
-        'utc_now': now.isoformat(),
-        'utc_date': now.date().isoformat(),
-        'utc_time': now.strftime('%H:%M'),
-        'message': 'Use this to check server timezone'
-    })
-
-
 @app.route('/api/legal/<page>', methods=['GET'])
 def legal(page):
     pages = {
         'terms': {
             'title': 'Условия за ползване',
-            'content': 'Travel Board е платформа, която помага на потребителите да откриват и се свързват с други хора със съвместими планове за пътуване. Travel Board НЕ предоставя транспортни услуги, НЕ организира пътувания, НЕ продава билети, НЕ обработва плащания и НЕ гарантира никакво пътуване. Потребителите са изцяло отговорни за собствените си решения. Телефонният номер, който публикувате, е публичен и се вижда от посетителите на таблото. Не изпращайте пари предварително на непознати.'
+            'content': (
+                'Travel Board е платформа, която помага на потребителите да откриват и се свързват с други хора със съвместими планове за пътуване. '
+                'Travel Board НЕ предоставя транспортни услуги, НЕ организира пътувания, НЕ продава билети, НЕ обработва плащания и НЕ гарантира никакво пътуване. '
+                'Потребителите са изцяло отговорни за собствените си решения. '
+                'Телефонният номер, който публикувате, е публичен и се вижда от всички посетители на таблото. '
+                'Публикуването на телефонен номер НЕ потвърждава самоличността на човека. '
+                'Може да бъдете контактиран(а) от непознати — не споделяйте чувствителна лична информация. '
+                'Не изпращайте пари предварително на непознати.'
+            )
         },
         'privacy': {
             'title': 'Политика за поверителност',
-            'content': 'Събираме минимално количество информация: име и телефон за контакт. Телефонният номер е публичен, защото Travel Board е табло за директно свързване между пътуващи. Не споделяме данни с трети страни. Старите обяви се изтриват автоматично след датата на пътуването. Можете да изтриете обявата си по всяко време с кода за управление.'
+            'content': (
+                'Събираме минимално количество информация: име и телефон за контакт. '
+                'Телефонният номер е публичен, защото Travel Board е табло за директно свързване между пътуващи. '
+                'Публикуването на номер означава, че всеки посетител може да го види и да се свърже с вас. '
+                'Не споделяме данни с трети страни. '
+                'Старите обяви се изтриват автоматично след датата на пътуването. '
+                'Можете да изтриете обявата си по всяко време с кода за управление.'
+            )
         },
         'safety': {
             'title': 'Безопасност',
-            'content': 'Никога не споделяйте лична информация, ако не сте сигурни. Срещайте се на публични места. Не изпращайте пари предварително. Travel Board е само дъска за обяви — не носи отговорност за взаимодействията между потребителите. Ако видите подозрителна обява, използвайте бутона "Сигнал".'
+            'content': (
+                'Никога не споделяйте лична информация, ако не сте сигурни. '
+                'Срещайте се на публични места. Не изпращайте пари предварително. '
+                'Travel Board е само дъска за обяви — не носи отговорност за взаимодействията между потребителите. '
+                'Телефонният номер в обявата НЕ потвърждава самоличността на човека. '
+                'Винаги потвърждавайте личността на шофьора/пътника преди пътуване. '
+                'Ако видите подозрителна обява, използвайте бутона "Сигнал".'
+            )
         },
         'contact': {
             'title': 'Контакт',

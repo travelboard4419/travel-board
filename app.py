@@ -95,7 +95,8 @@ def force_https():
 # ========== RATE LIMITING (PostgreSQL-backed, atomic) ==========
 def check_rate_limit(key, max_req=5, window=3600):
     """Atomic rate limiting using PostgreSQL UPSERT."""
-    now = datetime.utcnow()
+    # datetime.utcnow() removed in Python 3.14; keep naive for DB compatibility
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     window_start = now - timedelta(seconds=window)
     conn = get_db()
     c = conn.cursor()
@@ -142,7 +143,8 @@ def hash_phone_for_rate_limit(phone):
 # ========== SESSION MANAGEMENT (Server-side, PostgreSQL-backed) ==========
 def create_session(data, expires_hours=2):
     session_id = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=expires_hours)
+    # datetime.utcnow() removed in Python 3.14; keep naive for DB compatibility
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=expires_hours)
     conn = get_db()
     try:
         c = conn.cursor()
@@ -171,7 +173,8 @@ def get_session(session_id):
         if not row:
             return None
         data_raw, expires_at = row[0], row[1]
-        now = datetime.utcnow()
+        # datetime.utcnow() removed in Python 3.14; keep naive for DB compatibility
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         if expires_at.tzinfo is not None:
             now = datetime.now(expires_at.tzinfo)
         if expires_at < now:
@@ -302,11 +305,17 @@ def validate_id(val):
         return False, None
 
 # ========== CLEANUP ==========
-last_cleanup = datetime.min
+# Use timezone-aware UTC to avoid offset-naive vs offset-aware TypeErrors on Python 3.14+
+last_cleanup = datetime.min.replace(tzinfo=timezone.utc)
 
 def cleanup_old_posts():
     global last_cleanup
     now = datetime.now(timezone.utc)
+    
+    # Defensive: if last_cleanup was ever stored/passed as naive UTC, normalize it
+    # so the subtraction never crashes regardless of where the value came from.
+    if last_cleanup.tzinfo is None:
+        last_cleanup = last_cleanup.replace(tzinfo=timezone.utc)
     if now - last_cleanup < timedelta(hours=1):
         return
     last_cleanup = now
@@ -323,10 +332,13 @@ def cleanup_old_posts():
             "DELETE FROM ride_requests WHERE date < %s",
             (today_str,)
         )
-        c.execute("DELETE FROM sessions WHERE expires_at < %s", (now,))
+        # DB columns are TIMESTAMP WITHOUT TIME ZONE; pass naive UTC to avoid
+        # PostgreSQL timezone conversions.
+        naive_now = now.replace(tzinfo=None)
+        c.execute("DELETE FROM sessions WHERE expires_at < %s", (naive_now,))
         c.execute(
             "DELETE FROM rate_limits WHERE window_start < %s",
-            (now - timedelta(hours=24),)
+            (naive_now - timedelta(hours=24),)
         )
         conn.commit()
         logger.info("Cleanup completed")

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Board — Админ панел</title>
+<style>
+:root{
+  --primary:#15803d;--primary-dark:#166534;--primary-light:#dcfce7;
+  --success:#16a34a;--danger:#dc2626;--warning:#ca8a04;
+  --bg:#f0fdf4;--card:#ffffff;--text:#14532d;--muted:#4b7c5e;
+  --border:#bbf7d0;--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-lg:0 10px 15px -3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}
+header{background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;padding:1.5rem 1rem;text-align:center;box-shadow:var(--shadow-lg)}
+header h1{font-size:1.5rem;font-weight:700}
+header p{opacity:.7;font-size:.85rem;margin-top:.25rem}
+.container{max-width:1100px;margin:0 auto;padding:1rem}
+.login-card{max-width:400px;margin:4rem auto;background:var(--card);padding:2rem;border-radius:1rem;box-shadow:var(--shadow-lg);text-align:center}
+.login-card h2{margin-bottom:1.5rem;color:var(--primary-dark)}
+.login-card input{width:100%;padding:.75rem;border:1.5px solid var(--border);border-radius:.5rem;font-size:1rem;margin-bottom:1rem}
+.login-card input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(21,128,61,.12)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.65rem 1.25rem;border:none;border-radius:.5rem;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-secondary{background:var(--bg);color:var(--text);border:1.5px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-sm{padding:.35rem .6rem;font-size:.8rem}
+.btn-block{width:100%}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat-box{background:var(--card);padding:1rem;border-radius:.75rem;box-shadow:var(--shadow);text-align:center}
+.stat-box .number{font-size:1.75rem;font-weight:800;color:var(--primary)}
+.stat-box .label{font-size:.8rem;color:var(--muted);margin-top:.25rem}
+.section{margin-bottom:2rem}
+.section h2{font-size:1.1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;color:var(--primary-dark)}
+.badge{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:.75rem;font-weight:700;background:var(--primary);color:#fff}
+table{width:100%;background:var(--card);border-radius:.75rem;box-shadow:var(--shadow);border-collapse:collapse;overflow:hidden;font-size:.9rem}
+th,td{padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--primary-light);font-weight:700;font-size:.8rem;text-transform:uppercase;color:var(--primary-dark)}
+tr:hover{background:#f8fafc}
+.report-row td{font-size:.85rem}
+.report-reason{display:inline-block;padding:.15rem .4rem;border-radius:.25rem;font-size:.75rem;font-weight:700;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.empty-state{text-align:center;padding:2rem;color:var(--muted);background:var(--card);border-radius:.75rem;box-shadow:var(--shadow)}
+.alert{padding:.75rem 1rem;border-radius:.5rem;margin-bottom:1rem;font-size:.9rem;display:none}
+.alert.show{display:block}
+.alert-error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.alert-success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
+@media(max-width:768px){table{display:block;overflow-x:auto;white-space:nowrap}}
+</style>
+</head>
+<body>
+<header>
+<h1>🛡️ Админ панел</h1>
+<p>Travel Board — управление на обяви и сигнали</p>
+</header>
+
+<div class="container">
+<div id="login-section">
+<div class="login-card">
+<h2>Вход в админ панела</h2>
+<div id="login-alert" class="alert"></div>
+<input type="password" id="admin-password" placeholder="Админ парола">
+<button class="btn btn-primary btn-block" id="btn-login">Вход</button>
+</div>
+</div>
+
+<div id="admin-section" style="display:none">
+<div class="top-bar">
+<div id="admin-alert" class="alert" style="margin:0;flex:1"></div>
+<div style="display:flex;gap:.5rem">
+<button class="btn btn-secondary btn-sm" id="btn-refresh">🔄 Обнови</button>
+<button class="btn btn-secondary btn-sm" id="btn-cleanup">🧹 Почисти стари</button>
+<button class="btn btn-danger btn-sm" id="btn-logout">Изход</button>
+</div>
+</div>
+
+<div class="stats-grid">
+<div class="stat-box"><div class="number" id="stat-journeys">—</div><div class="label">Обяви за пътуване</div></div>
+<div class="stat-box"><div class="number" id="stat-requests">—</div><div class="label">Заявки за превоз</div></div>
+<div class="stat-box"><div class="number" id="stat-reports">—</div><div class="label">Сигнали</div></div>
+</div>
+
+<div class="section">
+<h2>🚘 Обяви за пътуване <span class="badge" id="count-journeys">0</span></h2>
+<div id="journeys-table"></div>
+</div>
+<div class="section">
+<h2>🙋 Заявки за превоз <span class="badge" id="count-requests">0</span></h2>
+<div id="requests-table"></div>
+</div>
+<div class="section">
+<h2>🚩 Сигнали <span class="badge" id="count-reports">0</span></h2>
+<div id="reports-table"></div>
+</div>
+</div>
+</div>
+
+<script>
+/* Travel Board — Admin Panel */
+async function api(url, opts = {}) {
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opts });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Грешка');
+    return data;
+}
+
+function showAlert(id, msg, type = 'error') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'alert alert-' + type + ' show';
+    setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+async function login() {
+    const pwd = document.getElementById('admin-password').value.trim();
+    if (!pwd) return;
+    try {
+        await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: pwd }) });
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('admin-section').style.display = 'block';
+        loadDashboard();
+    } catch (err) {
+        showAlert('login-alert', err.message || 'Грешна парола');
+    }
+}
+
+async function logout() {
+    try { await api('/api/admin/logout', { method: 'POST' }); } catch (e) {}
+    location.reload();
+}
+
+async function loadDashboard() {
+    try {
+        const data = await api('/api/admin/posts');
+        document.getElementById('stat-journeys').textContent = data.journeys.length;
+        document.getElementById('stat-requests').textContent = data.requests.length;
+        document.getElementById('stat-reports').textContent = data.report_count;
+        document.getElementById('count-journeys').textContent = data.journeys.length;
+        document.getElementById('count-requests').textContent = data.requests.length;
+        document.getElementById('count-reports').textContent = data.report_count;
+        renderJourneys(data.journeys);
+        renderRequests(data.requests);
+        loadReports();
+    } catch (err) {
+        showAlert('admin-alert', err.message);
+    }
+}
+
+function renderJourneys(rows) {
+    const el = document.getElementById('journeys-table');
+    if (!rows.length) { el.innerHTML = '<div class="empty-state">Няма обяви</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>ID</th><th>Маршрут</th><th>Дата</th><th>Час</th><th>Места</th><th>Име</th><th>Телефон</th><th></th></tr></thead><tbody>${rows.map(r => `<tr>
+<td>#${r.id}</td><td><strong>${esc(r.origin)} → ${esc(r.destination)}</strong></td><td>${fmtDate(r.date)}</td><td>${r.time}</td><td>${r.seats}</td><td>${esc(r.contact_name)}</td><td>${esc(r.contact_phone)}</td>
+<td><button class="btn btn-danger btn-sm action-admin-delete" data-type="journey" data-id="${r.id}">Изтрий</button></td>
+</tr>`).join('')}</tbody></table>`;
+    el.querySelectorAll('.action-admin-delete').forEach(btn => {
+        btn.addEventListener('click', () => adminDelete(btn.dataset.type, parseInt(btn.dataset.id)));
+    });
+}
+
+function renderRequests(rows) {
+    const el = document.getElementById('requests-table');
+    if (!rows.length) { el.innerHTML = '<div class="empty-state">Няма заявки</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>ID</th><th>Маршрут</th><th>Дата</th><th>Час</th><th>Хора</th><th>Име</th><th>Телефон</th><th></th></tr></thead><tbody>${rows.map(r => `<tr>
+<td>#${r.id}</td><td><strong>${esc(r.origin)} → ${esc(r.destination)}</strong></td><td>${fmtDate(r.date)}</td><td>${r.time}</td><td>${r.people}</td><td>${esc(r.contact_name)}</td><td>${esc(r.contact_phone)}</td>
+<td><button class="btn btn-danger btn-sm action-admin-delete" data-type="request" data-id="${r.id}">Изтрий</button></td>
+</tr>`).join('')}</tbody></table>`;
+    el.querySelectorAll('.action-admin-delete').forEach(btn => {
+        btn.addEventListener('click', () => adminDelete(btn.dataset.type, parseInt(btn.dataset.id)));
+    });
+}
+
+async function loadReports() {
+    try {
+        const rows = await api('/api/admin/reports');
+        const el = document.getElementById('reports-table');
+        if (!rows.length) { el.innerHTML = '<div class="empty-state">Няма сигнали</div>'; return; }
+        el.innerHTML = `<table><thead><tr><th>ID</th><th>Тип</th><th>Обява</th><th>Име</th><th>Причина</th><th>Дата</th></tr></thead><tbody>${rows.map(r => `<tr class="report-row">
+<td>#${r.id}</td><td>${r.post_type === 'journey' ? '🚘 Обява' : '🙋 Заявка'}</td><td>${esc(r.origin || '—')} → ${esc(r.destination || '—')} (#${r.post_id})</td><td>${esc(r.contact_name || '—')}</td>
+<td><span class="report-reason">${esc(r.reason)}</span></td><td>${r.created_at ? r.created_at.replace('T', ' ').slice(0, 16) : '—'}</td>
+</tr>`).join('')}</tbody></table>`;
+    } catch (err) {
+        document.getElementById('reports-table').innerHTML = '<div class="empty-state">Грешка при зареждане на сигнали</div>';
+    }
+}
+
+async function adminDelete(type, id) {
+    if (!confirm('Сигурен ли си, че искаш да изтриеш тази обява?')) return;
+    try {
+        await api('/api/admin/delete', { method: 'POST', body: JSON.stringify({ type, id }) });
+        showAlert('admin-alert', 'Изтрито успешно.', 'success');
+        loadDashboard();
+    } catch (err) {
+        showAlert('admin-alert', err.message);
+    }
+}
+
+async function runCleanup() {
+    if (!confirm('Да пусна ли ръчно почистване на стари обяви?')) return;
+    try {
+        await api('/api/admin/cleanup', { method: 'POST' });
+        showAlert('admin-alert', 'Почистването е извършено.', 'success');
+        loadDashboard();
+    } catch (err) {
+        showAlert('admin-alert', err.message);
+    }
+}
+
+function esc(t) {
+    const d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+}
+
+function fmtDate(d) {
+    const [y, m, day] = d.split('-');
+    return `${day}.${m}.${y}`;
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const loginBtn = document.getElementById('btn-login');
+    const logoutBtn = document.getElementById('btn-logout');
+    const refreshBtn = document.getElementById('btn-refresh');
+    const cleanupBtn = document.getElementById('btn-cleanup');
+    const pwdInput = document.getElementById('admin-password');
+
+    if (loginBtn) loginBtn.addEventListener('click', login);
+    if (logoutBtn) logoutBtn.addEventListener('click', logout);
+    if (refreshBtn) refreshBtn.addEventListener('click', loadDashboard);
+    if (cleanupBtn) cleanupBtn.addEventListener('click', runCleanup);
+    if (pwdInput) pwdInput.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+});
+
+</script>
+</body>
+</html>

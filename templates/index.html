@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Board — Црънча ↔ Пазарджик</title>
+<style>
+:root{
+  --primary:#15803d;--primary-dark:#166534;--primary-light:#dcfce7;
+  --success:#16a34a;--danger:#dc2626;--warning:#ca8a04;
+  --bg:#f0fdf4;--card:#ffffff;--text:#14532d;--muted:#4b7c5e;
+  --border:#bbf7d0;--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-lg:0 10px 15px -3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:1.5rem 1rem;text-align:center;box-shadow:var(--shadow-lg)}
+header h1{font-size:1.75rem;font-weight:700}
+header p{opacity:.9;margin-top:.25rem;font-size:.95rem}
+.stats-bar{display:flex;justify-content:center;gap:2rem;padding:.75rem 1rem;background:#fff;border-bottom:1px solid var(--border);font-size:.875rem;color:var(--muted)}
+.stats-bar span{font-weight:700;color:var(--text)}
+.container{max-width:800px;margin:0 auto;padding:1rem}
+.tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;background:#fff;padding:.5rem;border-radius:.75rem;box-shadow:var(--shadow);position:sticky;top:0;z-index:10}
+.tab-btn{flex:1;padding:.75rem .5rem;border:none;background:transparent;color:var(--muted);font-weight:700;font-size:.9rem;cursor:pointer;border-radius:.5rem;transition:all .2s;white-space:nowrap}
+.tab-btn:hover{background:var(--bg);color:var(--text)}
+.tab-btn.active{background:var(--primary);color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--card);border-radius:.75rem;padding:1.25rem;margin-bottom:1rem;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card h2{font-size:1.1rem;margin-bottom:1rem;color:var(--primary-dark)}
+.form-group{margin-bottom:1rem}
+label{display:block;font-size:.875rem;font-weight:700;margin-bottom:.35rem;color:var(--text)}
+input,select,textarea{width:100%;padding:.65rem .75rem;border:1.5px solid var(--border);border-radius:.5rem;font-size:1rem;font-family:inherit;background:#fff;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(21,128,61,.12)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:480px){.form-row{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.65rem 1.25rem;border:none;border-radius:.5rem;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-warning:hover{background:#a16207}
+.btn-secondary{background:var(--bg);color:var(--text);border:1.5px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-sm{padding:.4rem .75rem;font-size:.8rem}
+.btn-block{width:100%}
+.filters{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem}
+.filters select,.filters input{width:auto;min-width:140px}
+.post-card{background:var(--card);border-radius:.75rem;padding:1rem;margin-bottom:.75rem;box-shadow:var(--shadow);border-left:4px solid var(--primary);transition:transform .15s,box-shadow .15s}
+.post-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-lg)}
+.post-card.request{border-left-color:var(--success)}
+.post-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem}
+.route{font-weight:800;font-size:1.05rem;color:var(--primary-dark)}
+.route-arrow{color:var(--primary);margin:0 .25rem}
+.post-meta{display:flex;gap:1rem;flex-wrap:wrap;font-size:.875rem;color:var(--muted);margin-bottom:.75rem}
+.post-meta span{display:inline-flex;align-items:center;gap:.35rem}
+.post-contact{background:var(--primary-light);padding:.75rem;border-radius:.5rem;font-size:.9rem;color:var(--text)}
+.post-contact strong{color:var(--primary-dark)}
+.post-actions{display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem}
+.modal-overlay.show{display:flex;animation:fadeIn .2s}
+.modal{background:#fff;border-radius:1rem;padding:1.5rem;max-width:420px;width:100%;box-shadow:var(--shadow-lg);text-align:center}
+.modal h3{margin-bottom:.75rem;font-size:1.25rem;color:var(--primary-dark)}
+.modal p{color:var(--muted);margin-bottom:1rem}
+.code-box{background:var(--primary-light);border:2px dashed var(--primary);border-radius:.5rem;padding:1rem;font-family:monospace;font-size:1.5rem;font-weight:800;color:var(--primary);letter-spacing:.1em;margin:1rem 0;user-select:all}
+.alert{padding:.75rem 1rem;border-radius:.5rem;margin-bottom:1rem;font-size:.9rem;display:none}
+.alert.show{display:block;animation:fadeIn .3s}
+.alert-error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.alert-success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.manage-result{margin-top:1rem}
+.saved-posts{margin-top:1rem}
+.saved-item{display:flex;justify-content:space-between;align-items:center;padding:.75rem;background:var(--primary-light);border-radius:.5rem;margin-bottom:.5rem;font-size:.9rem;flex-wrap:wrap;gap:.5rem}
+.saved-item code{background:#fff;padding:.2rem .4rem;border-radius:.25rem;font-family:monospace;font-size:.85rem;border:1px solid var(--border);color:var(--primary-dark)}
+.checkbox-group{display:flex;align-items:flex-start;gap:.5rem;font-size:.875rem;color:var(--muted)}
+.checkbox-group input{width:auto;margin-top:.15rem;accent-color:var(--primary)}
+footer{text-align:center;padding:2rem 1rem;border-top:1px solid var(--border);margin-top:2rem;font-size:.8rem;color:var(--muted)}
+footer a{color:var(--primary);text-decoration:none;margin:0 .5rem;font-weight:600}
+footer a:hover{text-decoration:underline}
+.report-form{display:none;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)}
+.report-form.show{display:block}
+.spinner{display:inline-block;width:1rem;height:1rem;border:2px solid rgba(255,255,255,.3);border-radius:50%;border-top-color:#fff;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+<h1>🚗 Travel Board</h1>
+<p>Црънча ↔ Пазарджик — споделени пътувания</p>
+</header>
+
+<div class="stats-bar">
+<div>Активни обяви: <span id="stat-journeys">—</span></div>
+<div>Активни заявки: <span id="stat-requests">—</span></div>
+</div>
+
+<div class="container">
+<nav class="tabs">
+<button class="tab-btn active" data-tab="journeys">Предлагам превоз</button>
+<button class="tab-btn" data-tab="requests">Търся превоз</button>
+<button class="tab-btn" data-tab="manage">Моите обяви</button>
+</nav>
+
+<section id="journeys-tab" class="tab-content active">
+<div class="card">
+<h2>🚘 Нова обява за пътуване</h2>
+<div id="journey-alert" class="alert"></div>
+<form id="journey-form">
+<div class="form-row">
+<div class="form-group"><label>От</label><select name="origin" required><option value="">Избери...</option><option>Црънча</option><option>Пазарджик</option></select></div>
+<div class="form-group"><label>До</label><select name="destination" required><option value="">Избери...</option><option>Црънча</option><option>Пазарджик</option></select></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Дата</label><input type="date" name="date" required id="journey-date"></div>
+<div class="form-group"><label>Час</label><input type="time" name="time" required></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Свободни места</label><select name="seats"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
+<div class="form-group"><label>Твоето име</label><input type="text" name="contact_name" placeholder="Иван Иванов" maxlength="50" required></div>
+</div>
+<div class="form-group"><label>Телефон</label><input type="tel" name="contact_phone" placeholder="0888123456" required></div>
+<div class="form-group">
+<div class="checkbox-group">
+<input type="checkbox" name="consent" id="journey-consent" required>
+<label for="journey-consent" style="margin:0;font-weight:normal">Съгласен съм телефонът ми да бъде публично видим на таблото.</label>
+</div>
+</div>
+<button type="submit" class="btn btn-primary btn-block" id="journey-submit">Публикувай обява</button>
+</form>
+</div>
+
+<div class="filters">
+<select id="filter-j-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<input type="date" id="filter-j-date">
+<button class="btn btn-secondary btn-sm" id="reset-j-filters">Изчисти</button>
+</div>
+<div id="journeys-list"></div>
+</section>
+
+<section id="requests-tab" class="tab-content">
+<div class="card">
+<h2>🙋 Нова заявка за превоз</h2>
+<div id="request-alert" class="alert"></div>
+<form id="request-form">
+<div class="form-row">
+<div class="form-group"><label>От</label><select name="origin" required><option value="">Избери...</option><option>Црънча</option><option>Пазарджик</option></select></div>
+<div class="form-group"><label>До</label><select name="destination" required><option value="">Избери...</option><option>Црънча</option><option>Пазарджик</option></select></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Дата</label><input type="date" name="date" required id="request-date"></div>
+<div class="form-group"><label>Час</label><input type="time" name="time" required></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Брой хора</label><select name="people"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
+<div class="form-group"><label>Твоето име</label><input type="text" name="contact_name" placeholder="Иван Иванов" maxlength="50" required></div>
+</div>
+<div class="form-group"><label>Телефон</label><input type="tel" name="contact_phone" placeholder="0888123456" required></div>
+<div class="form-group">
+<div class="checkbox-group">
+<input type="checkbox" name="consent" id="request-consent" required>
+<label for="request-consent" style="margin:0;font-weight:normal">Съгласен съм телефонът ми да бъде публично видим на таблото.</label>
+</div>
+</div>
+<button type="submit" class="btn btn-primary btn-block" id="request-submit">Публикувай заявка</button>
+</form>
+</div>
+
+<div class="filters">
+<select id="filter-r-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<input type="date" id="filter-r-date">
+<button class="btn btn-secondary btn-sm" id="reset-r-filters">Изчисти</button>
+</div>
+<div id="requests-list"></div>
+</section>
+
+<section id="manage-tab" class="tab-content">
+<div class="card">
+<h2>🔑 Моите обяви</h2>
+<p style="color:var(--muted);font-size:.9rem;margin-bottom:1rem">Въведи кода за управление, за да видиш или изтриеш обява. Кодът е даден при публикуване и е запазен на това устройство.</p>
+<form id="manage-form">
+<div class="form-row">
+<div class="form-group" style="flex:1"><input type="text" id="manage-code-input" placeholder="Код за управление (напр. ABC123)" maxlength="12" style="text-transform:uppercase"></div>
+<div class="form-group" style="flex:0"><button type="submit" class="btn btn-primary">Покажи</button></div>
+</div>
+</form>
+<div id="manage-alert" class="alert"></div>
+<div id="manage-result" class="manage-result"></div>
+</div>
+
+<div class="card">
+<h2>💾 Запазени на това устройство</h2>
+<div id="saved-posts" class="saved-posts"></div>
+</div>
+</section>
+</div>
+
+<div class="modal-overlay" id="success-modal">
+<div class="modal">
+<h3>✅ Обявата е публикувана!</h3>
+<p>Запази този код — с него можеш да управляваш или изтриеш обявата:</p>
+<div class="code-box" id="success-code"></div>
+<p style="font-size:.8rem">Кодът е запазен автоматично на това устройство.</p>
+<button class="btn btn-primary btn-block" id="close-success-modal">Разбрах</button>
+</div>
+</div>
+
+<div class="modal-overlay" id="legal-modal">
+<div class="modal" style="text-align:left;max-width:600px">
+<h3 id="legal-title"></h3>
+<div id="legal-content" style="color:var(--text);line-height:1.6;white-space:pre-wrap"></div>
+<button class="btn btn-secondary btn-block" id="close-legal-modal" style="margin-top:1rem">Затвори</button>
+</div>
+</div>
+
+<footer>
+<a href="#" data-legal="terms">Условия за ползване</a>
+<a href="#" data-legal="privacy">Поверителност</a>
+<a href="#" data-legal="safety">Безопасност</a>
+<a href="#" data-legal="contact">Контакт</a>
+<div style="margin-top:.5rem">Travel Board © 2024</div>
+</footer>
+
+<script>
+/* Travel Board — Main Frontend */
+const LS_KEY = 'travelboard_posts';
+let savedPosts = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    const jDate = document.getElementById('journey-date');
+    const rDate = document.getElementById('request-date');
+    const fjDate = document.getElementById('filter-j-date');
+    const frDate = document.getElementById('filter-r-date');
+    if (jDate) jDate.min = today;
+    if (rDate) rDate.min = today;
+    if (fjDate) fjDate.min = today;
+    if (frDate) frDate.min = today;
+
+    loadStats();
+    loadJourneys();
+    loadRequests();
+    renderSavedPosts();
+
+    // Tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // Forms
+    const jForm = document.getElementById('journey-form');
+    const rForm = document.getElementById('request-form');
+    if (jForm) jForm.addEventListener('submit', createJourney);
+    if (rForm) rForm.addEventListener('submit', createRequest);
+
+    // Manage form
+    const mForm = document.querySelector('#manage-tab form');
+    if (mForm) mForm.addEventListener('submit', lookupManage);
+
+    // Filter reset buttons
+    const jReset = document.getElementById('reset-j-filters');
+    const rReset = document.getElementById('reset-r-filters');
+    if (jReset) jReset.addEventListener('click', () => resetFilters('j'));
+    if (rReset) rReset.addEventListener('click', () => resetFilters('r'));
+
+    // Filter selects/inputs
+    const jOrigin = document.getElementById('filter-j-origin');
+    const rOrigin = document.getElementById('filter-r-origin');
+    if (jOrigin) jOrigin.addEventListener('change', loadJourneys);
+    if (rOrigin) rOrigin.addEventListener('change', loadRequests);
+    if (fjDate) fjDate.addEventListener('change', loadJourneys);
+    if (frDate) frDate.addEventListener('change', loadRequests);
+
+    // Legal links
+    document.querySelectorAll('footer a[data-legal]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            showLegal(a.dataset.legal);
+        });
+    });
+
+    // Modals close on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(o => {
+        o.addEventListener('click', e => { if (e.target === o) o.classList.remove('show'); });
+    });
+
+    // Close modal buttons
+    const closeModalBtn = document.getElementById('close-success-modal');
+    const closeLegalBtn = document.getElementById('close-legal-modal');
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+    if (closeLegalBtn) closeLegalBtn.addEventListener('click', closeLegal);
+});
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === tab + '-tab'));
+    if (tab === 'journeys') loadJourneys();
+    if (tab === 'requests') loadRequests();
+    if (tab === 'manage') renderSavedPosts();
+}
+
+async function api(url, opts = {}) {
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Грешка в мрежата');
+    return data;
+}
+
+function showAlert(id, msg, type = 'error') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'alert alert-' + type + ' show';
+    setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+async function createJourney(e) {
+    e.preventDefault();
+    const btn = document.getElementById('journey-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Публикуване...';
+    try {
+        const fd = new FormData(e.target);
+        const body = Object.fromEntries(fd);
+        body.seats = parseInt(body.seats) || 1;
+        body.consent = !!body.consent;
+        const data = await api('/api/journeys', { method: 'POST', body: JSON.stringify(body) });
+        savePost(data.id, 'journey', data.management_code, body);
+        showSuccessModal(data.management_code);
+        e.target.reset();
+        loadJourneys();
+        loadStats();
+    } catch (err) {
+        showAlert('journey-alert', err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Публикувай обява';
+    }
+}
+
+async function createRequest(e) {
+    e.preventDefault();
+    const btn = document.getElementById('request-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Публикуване...';
+    try {
+        const fd = new FormData(e.target);
+        const body = Object.fromEntries(fd);
+        body.people = parseInt(body.people) || 1;
+        body.consent = !!body.consent;
+        const data = await api('/api/ride-requests', { method: 'POST', body: JSON.stringify(body) });
+        savePost(data.id, 'request', data.management_code, body);
+        showSuccessModal(data.management_code);
+        e.target.reset();
+        loadRequests();
+        loadStats();
+    } catch (err) {
+        showAlert('request-alert', err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Публикувай заявка';
+    }
+}
+
+function savePost(id, type, code, body) {
+    savedPosts = savedPosts.filter(p => !(p.id == id && p.type === type));
+    savedPosts.push({ id, type, code, origin: body.origin, destination: body.destination, date: body.date, time: body.time, created: Date.now() });
+    localStorage.setItem(LS_KEY, JSON.stringify(savedPosts));
+}
+
+function removeSavedPost(id, type) {
+    savedPosts = savedPosts.filter(p => !(p.id == id && p.type === type));
+    localStorage.setItem(LS_KEY, JSON.stringify(savedPosts));
+    renderSavedPosts();
+}
+
+function getSavedCode(id, type) {
+    const p = savedPosts.find(p => p.id == id && p.type === type);
+    return p ? p.code : null;
+}
+
+function showSuccessModal(code) {
+    document.getElementById('success-code').textContent = code;
+    document.getElementById('success-modal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('success-modal').classList.remove('show');
+}
+
+async function loadJourneys() {
+    const list = document.getElementById('journeys-list');
+    list.innerHTML = '<div class="empty-state">Зареждане...</div>';
+    try {
+        const filter = document.getElementById('filter-j-origin').value;
+        const date = document.getElementById('filter-j-date').value;
+        let origin = '', destination = '';
+        if (filter.includes('→')) { [origin, destination] = filter.split(' → '); }
+        let url = '/api/journeys?' + new URLSearchParams({ origin, destination, date });
+        const rows = await api(url);
+        if (!rows.length) {
+            list.innerHTML = '<div class="empty-state">Няма активни обяви за този филтър.</div>';
+            return;
+        }
+        list.innerHTML = rows.map(r => renderJourneyCard(r)).join('');
+        attachCardListeners();
+    } catch (err) {
+        list.innerHTML = '<div class="empty-state">Грешка при зареждане.</div>';
+    }
+}
+
+function renderJourneyCard(r) {
+    const savedCode = getSavedCode(r.id, 'journey');
+    const canDelete = !!savedCode;
+    return `<div class="post-card" data-id="${esc(r.id)}" data-type="journey">
+        <div class="post-header"><div class="route">${esc(r.origin)} <span class="route-arrow">→</span> ${esc(r.destination)}</div></div>
+        <div class="post-meta"><span>📅 ${fmtDate(r.date)}</span><span>🕐 ${r.time}</span><span>🪑 ${r.seats} места</span></div>
+        <div class="post-contact">👤 <strong>${esc(r.contact_name)}</strong> &nbsp;|&nbsp; 📞 <strong>${esc(r.contact_phone)}</strong></div>
+        <div class="post-actions">
+            ${canDelete ? `<button class="btn btn-danger btn-sm action-delete" data-id="${r.id}" data-type="journey" data-code="${esc(savedCode)}">🗑️ Изтрий</button>` : ''}
+            <button class="btn btn-warning btn-sm action-report-toggle" data-id="${r.id}" data-type="journey">🚩 Сигнал</button>
+        </div>
+        <div class="report-form" id="report-j-${r.id}">
+            <div style="font-size:.85rem;color:var(--muted);margin-bottom:.5rem">Причина за сигнала:</div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm action-report" data-id="${r.id}" data-type="journey" data-reason="fake">Фалшива обява</button>
+                <button class="btn btn-secondary btn-sm action-report" data-id="${r.id}" data-type="journey" data-reason="wrong_phone">Грешен телефон</button>
+                <button class="btn btn-secondary btn-sm action-report" data-id="${r.id}" data-type="journey" data-reason="spam">Спам</button>
+                <button class="btn btn-secondary btn-sm action-report" data-id="${r.id}" data-type="journey" data-reason="inappropriate">Неподходящо</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function loadRequests() {
+    const list = document.getElementById('requests-list');
+    list.innerHTML = '<div class="empty-state">Зареждане...</div>';
+    try {
+        const filter = document.getElementById('filter-r-origin').value;
+        const date = document.getElementById('filter-r-date').value;
+        let origin = '', destination = '';
+        if (filter.includes('→')) { [origin, destination] = filter.split(' → '); }
+        let url = '/api/ride-requests?' + new URLSearchParams({ origin, destination, date });
+        const rows = await api(url);
+        if (!rows.length) {
+            list.innerHTML = '<div class="empty-state">Няма активни заявки за този филтър.</div>';
+            return;
+        }
+        list.innerHTML = rows.map(r => renderRequestCard(r)).join('');
+        attachCardListeners();
+    } catch (err) {
+        list.innerHTML = '<div class="empty-state">Грешка при зареждане.</div>';
+    }
+}
+
+function renderRequestCard(r) {
+    const savedCode = getSavedCode(r.id, 'request');
+    const canDelete = !!savedCode;
+    return `<div class="post-card request" data-id="${esc(r.id)}" data-type="request">
+        <div class="post-header"><div class="route">${esc(r.origin)} <span class="route-arrow">→</span> ${esc(r.destination)}</div></div>
+        <div class="post-meta"><span>📅 ${fmtDate(r.date)}</span><span>🕐 ${r.time}</span><span>👥 ${r.people} човека</span></div>
+        <div class="post-contact">👤 <strong>${esc(r.contact_name)}</strong> &nbsp;|&nbsp; 📞 <strong>${esc(r.contact_phone)}</strong></div>
+        <div class="post-actions">
+            ${canDelete ? `<button class="btn btn-danger btn-sm action-delete" data-id="${r.id}" data-type="request" data-code="${esc(savedCode)}">🗑️ Изтрий</button>` : ''}
+            <button class="btn btn-warning btn-sm action-report-toggle" data-id="${r.id}" data-type="request">🚩 Сигнал</button>
+        </div>
+        <div class="report-form" id="report-r-${r.id}">
+            <div style="font-size:.85rem;color:var(--muted);margin-bottom:.5rem">Причина за сигнала:</div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm action-report" data-id="${r.id}" data-type="request" data-reason="fake">Фалшива заявка</button>
+                <button class="btn btn-secondary btn-sm action-report" data-id="${r.id}" data-type="request" data-reason="wrong_phone">Грешен телефон</button>
+                <button class="btn btn-secondary btn-sm action-report" data-id="${r.id}" data-type="request" data-reason="spam">Спам</button>
+                <button class="btn btn-secondary btn-sm action-report" data-id="${r.id}" data-type="request" data-reason="inappropriate">Неподходящо</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+function attachCardListeners() {
+    document.querySelectorAll('.action-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseInt(btn.dataset.id);
+            const type = btn.dataset.type;
+            const code = btn.dataset.code;
+            deletePost(type, id, code);
+        });
+    });
+    document.querySelectorAll('.action-report-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const type = btn.dataset.type;
+            const el = document.getElementById(`report-${type[0]}-${id}`);
+            if (el) el.classList.toggle('show');
+        });
+    });
+    document.querySelectorAll('.action-report').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseInt(btn.dataset.id);
+            const type = btn.dataset.type;
+            const reason = btn.dataset.reason;
+            sendReport(type, id, reason);
+        });
+    });
+}
+
+async function lookupManage(e) {
+    e.preventDefault();
+    const code = document.getElementById('manage-code-input').value.trim().toUpperCase();
+    if (!code) return;
+    const resultEl = document.getElementById('manage-result');
+    resultEl.innerHTML = '<div class="empty-state">Зареждане...</div>';
+    try {
+        const data = await api('/api/manage', { method: 'POST', body: JSON.stringify({ code }) });
+        if (data.found) {
+            const p = data.post;
+            const isJourney = data.type === 'journey';
+            savePost(p.id, data.type, code, p);
+            renderSavedPosts();
+            resultEl.innerHTML = `<div class="post-card ${isJourney ? '' : 'request'}">
+                <div class="post-header"><div class="route">${esc(p.origin)} → ${esc(p.destination)}</div><span style="font-size:.75rem;color:var(--muted)">${isJourney ? '🚘 Обява' : '🙋 Заявка'}</span></div>
+                <div class="post-meta"><span>📅 ${fmtDate(p.date)}</span><span>🕐 ${p.time}</span><span>${isJourney ? '🪑 ' + p.seats + ' места' : '👥 ' + p.people + ' човека'}</span></div>
+                <div class="post-contact">👤 <strong>${esc(p.contact_name)}</strong> &nbsp;|&nbsp; 📞 <strong>${esc(p.contact_phone)}</strong></div>
+                <div class="post-actions"><button class="btn btn-danger btn-sm action-manage-delete" data-id="${p.id}" data-type="${data.type}" data-code="${esc(code)}">🗑️ Изтрий обявата</button></div>
+            </div>`;
+            resultEl.querySelector('.action-manage-delete').addEventListener('click', () => deletePost(data.type, p.id, code));
+        } else {
+            resultEl.innerHTML = '<div class="empty-state">Няма намерена обява с този код.</div>';
+        }
+    } catch (err) {
+        showAlert('manage-alert', err.message);
+        resultEl.innerHTML = '';
+    }
+}
+
+function renderSavedPosts() {
+    const el = document.getElementById('saved-posts');
+    if (!savedPosts.length) {
+        el.innerHTML = '<div class="empty-state" style="padding:1rem">Няма запазени обяви на това устройство.</div>';
+        return;
+    }
+    const sorted = [...savedPosts].sort((a, b) => b.created - a.created);
+    el.innerHTML = sorted.map(p => `
+        <div class="saved-item">
+            <div><strong>${esc(p.origin)} → ${esc(p.destination)}</strong><br><small style="color:var(--muted)">${fmtDate(p.date)} · ${p.time} · Код: <code>${esc(p.code)}</code></small></div>
+            <div style="display:flex;gap:.5rem"><button class="btn btn-danger btn-sm action-saved-delete" data-id="${p.id}" data-type="${p.type}" data-code="${esc(p.code)}">Изтрий</button></div>
+        </div>
+    `).join('');
+    el.querySelectorAll('.action-saved-delete').forEach(btn => {
+        btn.addEventListener('click', () => deletePost(btn.dataset.type, parseInt(btn.dataset.id), btn.dataset.code));
+    });
+}
+
+async function deletePost(type, id, code) {
+    if (!confirm('Сигурен ли си, че искаш да изтриеш тази обява? Това не може да бъде отменено.')) return;
+    try {
+        const endpoint = type === 'journey' ? `/api/journeys/${id}` : `/api/ride-requests/${id}`;
+        await api(endpoint, { method: 'DELETE', body: JSON.stringify({ delete_code: code }) });
+        removeSavedPost(id, type);
+        loadJourneys();
+        loadRequests();
+        loadStats();
+        const mr = document.getElementById('manage-result');
+        if (mr) mr.innerHTML = '';
+        showAlert('manage-alert', 'Обявата е изтрита.', 'success');
+    } catch (err) {
+        showAlert('manage-alert', err.message);
+    }
+}
+
+async function sendReport(type, id, reason) {
+    try {
+        await api('/api/reports', { method: 'POST', body: JSON.stringify({ post_type: type, post_id: id, reason }) });
+        alert('Сигналът е изпратен. Благодарим!');
+        document.querySelectorAll('.report-form').forEach(e => e.classList.remove('show'));
+    } catch (err) {
+        alert(err.message || 'Грешка при изпращане на сигнала.');
+    }
+}
+
+async function loadStats() {
+    try {
+        const data = await api('/api/stats');
+        document.getElementById('stat-journeys').textContent = data.active_journeys;
+        document.getElementById('stat-requests').textContent = data.active_requests;
+    } catch (e) {}
+}
+
+function resetFilters(prefix) {
+    document.getElementById('filter-' + prefix + '-origin').value = '';
+    document.getElementById('filter-' + prefix + '-date').value = '';
+    if (prefix === 'j') loadJourneys();
+    else loadRequests();
+}
+
+async function showLegal(page) {
+    try {
+        const data = await api('/api/legal/' + page);
+        document.getElementById('legal-title').textContent = data.title;
+        document.getElementById('legal-content').textContent = data.content;
+        document.getElementById('legal-modal').classList.add('show');
+    } catch (e) { alert('Грешка при зареждане.'); }
+}
+
+function closeLegal() {
+    document.getElementById('legal-modal').classList.remove('show');
+}
+
+function esc(t) {
+    const d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+}
+
+function fmtDate(d) {
+    const [y, m, day] = d.split('-');
+    return `${day}.${m}.${y}`;
+}
+
+</script>
+</body>
+</html>

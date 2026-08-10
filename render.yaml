@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: travel-board
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: travel-board-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      # NOTE: Set these manually in Render Dashboard after first deploy:
+      # ADMIN_PASSWORD, MGMT_PEPPER, SECRET_KEY
+      # NEVER put real values here.
+
+databases:
+  - name: travel-board-db
+    databaseName: travelboard
+    user: travelboard
+    plan: free

@@ -103,7 +103,6 @@ footer a:hover{text-decoration:underline}
 <button class="tab-btn" data-tab="manage">Моите обяви</button>
 </nav>
 
-<!-- NEW: Combined live tab -->
 <section id="live-tab" class="tab-content active">
 <div class="filters">
 <select id="filter-live-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
@@ -256,22 +255,18 @@ document.addEventListener('DOMContentLoaded', () => {
     loadRequests();
     renderSavedPosts();
 
-    // Tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
-    // Forms
     const jForm = document.getElementById('journey-form');
     const rForm = document.getElementById('request-form');
     if (jForm) jForm.addEventListener('submit', createJourney);
     if (rForm) rForm.addEventListener('submit', createRequest);
 
-    // Manage form
     const mForm = document.querySelector('#manage-tab form');
     if (mForm) mForm.addEventListener('submit', lookupManage);
 
-    // Filter reset buttons
     const jReset = document.getElementById('reset-j-filters');
     const rReset = document.getElementById('reset-r-filters');
     const lReset = document.getElementById('reset-live-filters');
@@ -279,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rReset) rReset.addEventListener('click', () => resetFilters('r'));
     if (lReset) lReset.addEventListener('click', () => resetFilters('live'));
 
-    // Filter selects/inputs
     const jOrigin = document.getElementById('filter-j-origin');
     const rOrigin = document.getElementById('filter-r-origin');
     const lOrigin = document.getElementById('filter-live-origin');
@@ -290,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (frDate) frDate.addEventListener('change', loadRequests);
     if (flDate) flDate.addEventListener('change', loadLive);
 
-    // Legal links
     document.querySelectorAll('footer a[data-legal]').forEach(a => {
         a.addEventListener('click', e => {
             e.preventDefault();
@@ -298,12 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Modals close on overlay click
     document.querySelectorAll('.modal-overlay').forEach(o => {
         o.addEventListener('click', e => { if (e.target === o) o.classList.remove('show'); });
     });
 
-    // Close modal buttons
     const closeModalBtn = document.getElementById('close-success-modal');
     const closeLegalBtn = document.getElementById('close-legal-modal');
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
@@ -459,6 +450,27 @@ async function loadJourneys() {
             return;
         }
         list.innerHTML = rows.map(r => renderJourneyCard(r)).join('');
+        attachCardListeners();
+    } catch (err) {
+        list.innerHTML = '<div class="empty-state">Грешка при зареждане.</div>';
+    }
+}
+
+async function loadRequests() {
+    const list = document.getElementById('requests-list');
+    list.innerHTML = '<div class="empty-state">Зареждане...</div>';
+    try {
+        const filter = document.getElementById('filter-r-origin').value;
+        const date = document.getElementById('filter-r-date').value;
+        let origin = '', destination = '';
+        if (filter.includes('→')) { [origin, destination] = filter.split(' → '); }
+        let url = '/api/ride-requests?' + new URLSearchParams({ origin, destination, date });
+        const rows = await api(url);
+        if (!rows.length) {
+            list.innerHTML = '<div class="empty-state">Няма активни заявки за този филтър.</div>';
+            return;
+        }
+        list.innerHTML = rows.map(r => renderRequestCard(r)).join('');
         attachCardListeners();
     } catch (err) {
         list.innerHTML = '<div class="empty-state">Грешка при зареждане.</div>';

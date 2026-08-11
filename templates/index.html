@@ -97,21 +97,23 @@ footer a:hover{text-decoration:underline}
 
 <div class="container">
 <nav class="tabs">
-<button class="tab-btn active" data-tab="journeys">Предлагам превоз</button>
+<button class="tab-btn active" data-tab="live">Настоящи пътувания</button>
+<button class="tab-btn" data-tab="journeys">Предлагам превоз</button>
 <button class="tab-btn" data-tab="requests">Търся превоз</button>
 <button class="tab-btn" data-tab="manage">Моите обяви</button>
 </nav>
 
-<section id="journeys-tab" class="tab-content active">
-<!-- LISTINGS FIRST (now at the top) -->
+<!-- NEW: Combined live tab -->
+<section id="live-tab" class="tab-content active">
 <div class="filters">
-<select id="filter-j-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
-<input type="date" id="filter-j-date">
-<button class="btn btn-secondary btn-sm" id="reset-j-filters">Изчисти</button>
+<select id="filter-live-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<input type="date" id="filter-live-date">
+<button class="btn btn-secondary btn-sm" id="reset-live-filters">Изчисти</button>
 </div>
-<div id="journeys-list"></div>
+<div id="live-list"></div>
+</section>
 
-<!-- FORM SECOND (now below the listings) -->
+<section id="journeys-tab" class="tab-content">
 <div class="card">
 <h2>🚘 Нова обява за пътуване</h2>
 <div id="journey-alert" class="alert"></div>
@@ -138,18 +140,16 @@ footer a:hover{text-decoration:underline}
 <button type="submit" class="btn btn-primary btn-block" id="journey-submit">Публикувай обява</button>
 </form>
 </div>
+
+<div class="filters">
+<select id="filter-j-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<input type="date" id="filter-j-date">
+<button class="btn btn-secondary btn-sm" id="reset-j-filters">Изчисти</button>
+</div>
+<div id="journeys-list"></div>
 </section>
 
 <section id="requests-tab" class="tab-content">
-<!-- LISTINGS FIRST (now at the top) -->
-<div class="filters">
-<select id="filter-r-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
-<input type="date" id="filter-r-date">
-<button class="btn btn-secondary btn-sm" id="reset-r-filters">Изчисти</button>
-</div>
-<div id="requests-list"></div>
-
-<!-- FORM SECOND (now below the listings) -->
 <div class="card">
 <h2>🙋 Нова заявка за превоз</h2>
 <div id="request-alert" class="alert"></div>
@@ -176,6 +176,13 @@ footer a:hover{text-decoration:underline}
 <button type="submit" class="btn btn-primary btn-block" id="request-submit">Публикувай заявка</button>
 </form>
 </div>
+
+<div class="filters">
+<select id="filter-r-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<input type="date" id="filter-r-date">
+<button class="btn btn-secondary btn-sm" id="reset-r-filters">Изчисти</button>
+</div>
+<div id="requests-list"></div>
 </section>
 
 <section id="manage-tab" class="tab-content">
@@ -236,12 +243,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const rDate = document.getElementById('request-date');
     const fjDate = document.getElementById('filter-j-date');
     const frDate = document.getElementById('filter-r-date');
+    const flDate = document.getElementById('filter-live-date');
     if (jDate) jDate.min = today;
     if (rDate) rDate.min = today;
     if (fjDate) fjDate.min = today;
     if (frDate) frDate.min = today;
+    if (flDate) flDate.min = today;
 
     loadStats();
+    loadLive();
     loadJourneys();
     loadRequests();
     renderSavedPosts();
@@ -264,16 +274,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filter reset buttons
     const jReset = document.getElementById('reset-j-filters');
     const rReset = document.getElementById('reset-r-filters');
+    const lReset = document.getElementById('reset-live-filters');
     if (jReset) jReset.addEventListener('click', () => resetFilters('j'));
     if (rReset) rReset.addEventListener('click', () => resetFilters('r'));
+    if (lReset) lReset.addEventListener('click', () => resetFilters('live'));
 
     // Filter selects/inputs
     const jOrigin = document.getElementById('filter-j-origin');
     const rOrigin = document.getElementById('filter-r-origin');
+    const lOrigin = document.getElementById('filter-live-origin');
     if (jOrigin) jOrigin.addEventListener('change', loadJourneys);
     if (rOrigin) rOrigin.addEventListener('change', loadRequests);
+    if (lOrigin) lOrigin.addEventListener('change', loadLive);
     if (fjDate) fjDate.addEventListener('change', loadJourneys);
     if (frDate) frDate.addEventListener('change', loadRequests);
+    if (flDate) flDate.addEventListener('change', loadLive);
 
     // Legal links
     document.querySelectorAll('footer a[data-legal]').forEach(a => {
@@ -298,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === tab + '-tab'));
+    if (tab === 'live') loadLive();
     if (tab === 'journeys') loadJourneys();
     if (tab === 'requests') loadRequests();
     if (tab === 'manage') renderSavedPosts();
@@ -332,6 +348,7 @@ async function createJourney(e) {
         savePost(data.id, 'journey', data.management_code, body);
         showSuccessModal(data.management_code);
         e.target.reset();
+        loadLive();
         loadJourneys();
         loadStats();
     } catch (err) {
@@ -356,6 +373,7 @@ async function createRequest(e) {
         savePost(data.id, 'request', data.management_code, body);
         showSuccessModal(data.management_code);
         e.target.reset();
+        loadLive();
         loadRequests();
         loadStats();
     } catch (err) {
@@ -390,6 +408,40 @@ function showSuccessModal(code) {
 
 function closeModal() {
     document.getElementById('success-modal').classList.remove('show');
+}
+
+async function loadLive() {
+    const list = document.getElementById('live-list');
+    list.innerHTML = '<div class="empty-state">Зареждане...</div>';
+    try {
+        const filter = document.getElementById('filter-live-origin').value;
+        const date = document.getElementById('filter-live-date').value;
+        let origin = '', destination = '';
+        if (filter.includes('→')) { [origin, destination] = filter.split(' → '); }
+        let jUrl = '/api/journeys?' + new URLSearchParams({ origin, destination, date });
+        let rUrl = '/api/ride-requests?' + new URLSearchParams({ origin, destination, date });
+
+        let journeys = [], requests = [];
+        try { journeys = await api(jUrl); } catch (e) {}
+        try { requests = await api(rUrl); } catch (e) {}
+
+        journeys.forEach(j => j._type = 'journey');
+        requests.forEach(r => r._type = 'request');
+
+        const all = [...journeys, ...requests].sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return a.time.localeCompare(b.time);
+        });
+
+        if (!all.length) {
+            list.innerHTML = '<div class="empty-state">Няма активни обяви или заявки.</div>';
+            return;
+        }
+        list.innerHTML = all.map(r => r._type === 'journey' ? renderJourneyCard(r) : renderRequestCard(r)).join('');
+        attachCardListeners();
+    } catch (err) {
+        list.innerHTML = '<div class="empty-state">Грешка при зареждане.</div>';
+    }
 }
 
 async function loadJourneys() {
@@ -560,6 +612,7 @@ async function deletePost(type, id, code) {
         const endpoint = type === 'journey' ? `/api/journeys/${id}` : `/api/ride-requests/${id}`;
         await api(endpoint, { method: 'DELETE', body: JSON.stringify({ delete_code: code }) });
         removeSavedPost(id, type);
+        loadLive();
         loadJourneys();
         loadRequests();
         loadStats();
@@ -592,7 +645,8 @@ async function loadStats() {
 function resetFilters(prefix) {
     document.getElementById('filter-' + prefix + '-origin').value = '';
     document.getElementById('filter-' + prefix + '-date').value = '';
-    if (prefix === 'j') loadJourneys();
+    if (prefix === 'live') loadLive();
+    else if (prefix === 'j') loadJourneys();
     else loadRequests();
 }
 

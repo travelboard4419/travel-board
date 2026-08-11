@@ -469,7 +469,10 @@ function renderJourneyCard(r) {
     const savedCode = getSavedCode(r.id, 'journey');
     const canDelete = !!savedCode;
     return `<div class="post-card" data-id="${esc(r.id)}" data-type="journey">
-        <div class="post-header"><div class="route">${esc(r.origin)} <span class="route-arrow">→</span> ${esc(r.destination)}</div></div>
+        <div class="post-header">
+            <div class="route">${esc(r.origin)} <span class="route-arrow">→</span> ${esc(r.destination)}</div>
+            <span style="font-size:.75rem;background:var(--primary-light);color:var(--primary-dark);padding:.2rem .5rem;border-radius:.25rem;font-weight:700;white-space:nowrap">🚘 Предлага превоз</span>
+        </div>
         <div class="post-meta"><span>📅 ${fmtDate(r.date)}</span><span>🕐 ${r.time}</span><span>🪑 ${r.seats} места</span></div>
         <div class="post-contact">👤 <strong>${esc(r.contact_name)}</strong> &nbsp;|&nbsp; 📞 <strong>${esc(r.contact_phone)}</strong></div>
         <div class="post-actions">
@@ -488,32 +491,14 @@ function renderJourneyCard(r) {
     </div>`;
 }
 
-async function loadRequests() {
-    const list = document.getElementById('requests-list');
-    list.innerHTML = '<div class="empty-state">Зареждане...</div>';
-    try {
-        const filter = document.getElementById('filter-r-origin').value;
-        const date = document.getElementById('filter-r-date').value;
-        let origin = '', destination = '';
-        if (filter.includes('→')) { [origin, destination] = filter.split(' → '); }
-        let url = '/api/ride-requests?' + new URLSearchParams({ origin, destination, date });
-        const rows = await api(url);
-        if (!rows.length) {
-            list.innerHTML = '<div class="empty-state">Няма активни заявки за този филтър.</div>';
-            return;
-        }
-        list.innerHTML = rows.map(r => renderRequestCard(r)).join('');
-        attachCardListeners();
-    } catch (err) {
-        list.innerHTML = '<div class="empty-state">Грешка при зареждане.</div>';
-    }
-}
-
 function renderRequestCard(r) {
     const savedCode = getSavedCode(r.id, 'request');
     const canDelete = !!savedCode;
     return `<div class="post-card request" data-id="${esc(r.id)}" data-type="request">
-        <div class="post-header"><div class="route">${esc(r.origin)} <span class="route-arrow">→</span> ${esc(r.destination)}</div></div>
+        <div class="post-header">
+            <div class="route">${esc(r.origin)} <span class="route-arrow">→</span> ${esc(r.destination)}</div>
+            <span style="font-size:.75rem;background:#dcfce7;color:var(--success);padding:.2rem .5rem;border-radius:.25rem;font-weight:700;white-space:nowrap">🙋 Търси превоз</span>
+        </div>
         <div class="post-meta"><span>📅 ${fmtDate(r.date)}</span><span>🕐 ${r.time}</span><span>👥 ${r.people} човека</span></div>
         <div class="post-contact">👤 <strong>${esc(r.contact_name)}</strong> &nbsp;|&nbsp; 📞 <strong>${esc(r.contact_phone)}</strong></div>
         <div class="post-actions">

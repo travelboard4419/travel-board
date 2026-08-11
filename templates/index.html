@@ -103,6 +103,15 @@ footer a:hover{text-decoration:underline}
 </nav>
 
 <section id="journeys-tab" class="tab-content active">
+<!-- LISTINGS FIRST (now at the top) -->
+<div class="filters">
+<select id="filter-j-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<input type="date" id="filter-j-date">
+<button class="btn btn-secondary btn-sm" id="reset-j-filters">Изчисти</button>
+</div>
+<div id="journeys-list"></div>
+
+<!-- FORM SECOND (now below the listings) -->
 <div class="card">
 <h2>🚘 Нова обява за пътуване</h2>
 <div id="journey-alert" class="alert"></div>
@@ -129,16 +138,18 @@ footer a:hover{text-decoration:underline}
 <button type="submit" class="btn btn-primary btn-block" id="journey-submit">Публикувай обява</button>
 </form>
 </div>
-
-<div class="filters">
-<select id="filter-j-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
-<input type="date" id="filter-j-date">
-<button class="btn btn-secondary btn-sm" id="reset-j-filters">Изчисти</button>
-</div>
-<div id="journeys-list"></div>
 </section>
 
 <section id="requests-tab" class="tab-content">
+<!-- LISTINGS FIRST (now at the top) -->
+<div class="filters">
+<select id="filter-r-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<input type="date" id="filter-r-date">
+<button class="btn btn-secondary btn-sm" id="reset-r-filters">Изчисти</button>
+</div>
+<div id="requests-list"></div>
+
+<!-- FORM SECOND (now below the listings) -->
 <div class="card">
 <h2>🙋 Нова заявка за превоз</h2>
 <div id="request-alert" class="alert"></div>
@@ -165,13 +176,6 @@ footer a:hover{text-decoration:underline}
 <button type="submit" class="btn btn-primary btn-block" id="request-submit">Публикувай заявка</button>
 </form>
 </div>
-
-<div class="filters">
-<select id="filter-r-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
-<input type="date" id="filter-r-date">
-<button class="btn btn-secondary btn-sm" id="reset-r-filters">Изчисти</button>
-</div>
-<div id="requests-list"></div>
 </section>
 
 <section id="manage-tab" class="tab-content">

@@ -40,7 +40,7 @@ if not SECRET_KEY:
         "Generate a strong random value (e.g., openssl rand -hex 32) and set it in Render."
     )
 
-CITIES = ["Црънча", "Пазарджик"]
+CITIES = ["Црънча", "Пазарджик", "Паталеница", "Дебращица"]
 REPORT_REASONS = {
     'fake': 'Фалшива обява',
     'wrong_phone': 'Грешен/чужд телефон',
@@ -423,6 +423,8 @@ def create_journey():
         return jsonify({'error': 'Невалиден маршрут'}), 400
     if origin == destination:
         return jsonify({'error': 'Началото и краят не могат да са еднакви'}), 400
+    if 'Пазарджик' not in (origin, destination):
+        return jsonify({'error': 'Невалиден маршрут. Пътуванията трябва да включват Пазарджик.'}), 400
 
     valid, msg = validate_datetime(date_str, time_str)
     if not valid:
@@ -603,6 +605,8 @@ def create_request():
         return jsonify({'error': 'Невалиден маршрут'}), 400
     if origin == destination:
         return jsonify({'error': 'Началото и краят не могат да са еднакви'}), 400
+    if 'Пазарджик' not in (origin, destination):
+        return jsonify({'error': 'Невалиден маршрут. Пътуванията трябва да включват Пазарджик.'}), 400
 
     valid, msg = validate_datetime(date_str, time_str)
     if not valid:

@@ -84,7 +84,6 @@ def add_security_headers(response):
     response.headers['X-Robots-Tag'] = 'noindex, nofollow'
     if request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https':
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    # Prevent caching of sensitive API responses
     if request.path.startswith('/api/'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
         response.headers['Pragma'] = 'no-cache'
@@ -104,7 +103,6 @@ def check_rate_limit(key, max_req=5, window=3600):
     conn = get_db()
     c = conn.cursor()
     try:
-        # Atomic upsert: insert or update with conflict resolution
         c.execute("""
             INSERT INTO rate_limits (key, count, window_start)
             VALUES (%s, 1, %s)
@@ -129,7 +127,6 @@ def check_rate_limit(key, max_req=5, window=3600):
     except Exception as e:
         logger.error("Rate limit error: %s", e)
         conn.rollback()
-        # Fail closed for sensitive endpoints, fail open for public GETs
         if 'admin' in key or 'delete' in key or 'manage' in key:
             return False
         return True
@@ -148,12 +145,6 @@ TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY")
 TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
 
-def verify_turnstile(token):
-    """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
-    if not TURNSTILE_SECRET_KEY:
-    return True
-    def verify_turnstile(token):
-    """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
 def verify_turnstile(token):
     """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
     if not TURNSTILE_SECRET_KEY:
@@ -176,25 +167,6 @@ def verify_turnstile(token):
     except Exception as e:
         logger.error("Turnstile verification error: %s", e)
         return True
-# ...
-except Exception:
-    return False   # was True
-    try:
-        import urllib.request
-        import urllib.parse
-        data = urllib.parse.urlencode({
-            'secret': TURNSTILE_SECRET_KEY,
-            'response': token
-        }).encode()
-        req = urllib.request.Request(TURNSTILE_VERIFY_URL, data=data, method='POST')
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            result = json.loads(resp.read())
-            if not result.get('success'):
-                logger.warning("Turnstile verification failed: %s", result.get('error-codes'))
-            return result.get('success', False)
-    except Exception as e:
-        logger.error("Turnstile verification error: %s", e)
-        return False
 
 # ========== SESSION MANAGEMENT (Server-side, PostgreSQL-backed) ==========
 def create_session(data, expires_hours=2):
@@ -275,7 +247,6 @@ def admin_required(f):
         session_data = get_session(session_id)
         if not session_data or not session_data.get('is_admin'):
             return jsonify({'error': 'Forbidden'}), 403
-        # Optional IP binding (soft check — log mismatch but don't block for dynamic IPs)
         current_ip = get_client_ip()
         stored_ip = session_data.get('ip')
         if stored_ip and stored_ip != current_ip:
@@ -335,7 +306,6 @@ def validate_datetime(date_str, time_str):
     valid, t = validate_time_str(time_str)
     if not valid:
         return False, t
-    # Compare against UTC to avoid timezone confusion
     now = datetime.now(timezone.utc)
     today_utc = now.date()
     if d == today_utc:
@@ -384,15 +354,8 @@ def cleanup_old_posts():
         conn = get_db()
         c = conn.cursor()
         today_str = now.date().strftime('%Y-%m-%d')
-        # Only delete posts from PAST dates, keep all of today's posts
-        c.execute(
-            "DELETE FROM journeys WHERE date < %s",
-            (today_str,)
-        )
-        c.execute(
-            "DELETE FROM ride_requests WHERE date < %s",
-            (today_str,)
-        )
+        c.execute("DELETE FROM journeys WHERE date < %s", (today_str,))
+        c.execute("DELETE FROM ride_requests WHERE date < %s", (today_str,))
         c.execute("DELETE FROM sessions WHERE expires_at < %s", (now,))
         c.execute(
             "DELETE FROM rate_limits WHERE window_start < %s",
@@ -418,7 +381,6 @@ def maybe_cleanup():
         cleanup_old_posts()
 
 # ========== JOURNEYS ==========
-
 @app.route('/api/journeys', methods=['POST'])
 def create_journey():
     data = request.get_json() or {}

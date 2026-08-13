@@ -105,7 +105,13 @@ footer a:hover{text-decoration:underline}
 
 <section id="live-tab" class="tab-content active">
 <div class="filters">
-<select id="filter-live-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<select id="filter-live-origin"><option value="">Всички посоки</option><option value="">Всички посоки</option>
+<option>Паталеница → Пазарджик</option>
+<option>Црънча → Пазарджик</option>
+<option>Дебращица → Пазарджик</option>
+<option>Пазарджик → Паталеница</option>
+<option>Пазарджик → Црънча</option>
+<option>Пазарджик → Дебращица</option>
 <input type="date" id="filter-live-date">
 <button class="btn btn-secondary btn-sm" id="reset-live-filters">Изчисти</button>
 </div>
@@ -141,7 +147,13 @@ footer a:hover{text-decoration:underline}
 </div>
 
 <div class="filters">
-<select id="filter-j-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<select id="filter-j-origin"><option value="">Всички посоки</option><option value="">Всички посоки</option>
+<option>Паталеница → Пазарджик</option>
+<option>Црънча → Пазарджик</option>
+<option>Дебращица → Пазарджик</option>
+<option>Пазарджик → Паталеница</option>
+<option>Пазарджик → Црънча</option>
+<option>Пазарджик → Дебращица</option>
 <input type="date" id="filter-j-date">
 <button class="btn btn-secondary btn-sm" id="reset-j-filters">Изчисти</button>
 </div>
@@ -153,9 +165,17 @@ footer a:hover{text-decoration:underline}
 <h2>🙋 Нова заявка за превоз</h2>
 <div id="request-alert" class="alert"></div>
 <form id="request-form">
-<div class="form-row">
-<div class="form-group"><label>От</label><select name="origin" required><option value="">Избери...</option><option>Црънча</option><option>Пазарджик</option></select></div>
-<div class="form-group"><label>До</label><select name="destination" required><option value="">Избери...</option><option>Црънча</option><option>Пазарджик</option></select></div>
+<div class="form-group">
+  <label>Маршрут</label>
+  <select name="route" required>
+    <option value="">Избери...</option>
+    <option>Паталеница → Пазарджик</option>
+    <option>Црънча → Пазарджик</option>
+    <option>Дебращица → Пазарджик</option>
+    <option>Пазарджик → Паталеница</option>
+    <option>Пазарджик → Црънча</option>
+    <option>Пазарджик → Дебращица</option>
+  </select>
 </div>
 <div class="form-row">
 <div class="form-group"><label>Дата</label><input type="date" name="date" required id="request-date"></div>
@@ -177,7 +197,13 @@ footer a:hover{text-decoration:underline}
 </div>
 
 <div class="filters">
-<select id="filter-r-origin"><option value="">Всички посоки</option><option>Црънча → Пазарджик</option><option>Пазарджик → Црънча</option></select>
+<select id="filter-r-origin"><option value="">Всички посоки</option><option value="">Всички посоки</option>
+<option>Паталеница → Пазарджик</option>
+<option>Црънча → Пазарджик</option>
+<option>Дебращица → Пазарджик</option>
+<option>Пазарджик → Паталеница</option>
+<option>Пазарджик → Црънча</option>
+<option>Пазарджик → Дебращица</option>
 <input type="date" id="filter-r-date">
 <button class="btn btn-secondary btn-sm" id="reset-r-filters">Изчисти</button>
 </div>
@@ -333,6 +359,12 @@ async function createJourney(e) {
     try {
         const fd = new FormData(e.target);
         const body = Object.fromEntries(fd);
+      if (body.route) {
+    const [origin, destination] = body.route.split(' → ');
+    body.origin = origin;
+    body.destination = destination;
+    delete body.route;
+}
         body.seats = parseInt(body.seats) || 1;
         body.consent = !!body.consent;
         const data = await api('/api/journeys', { method: 'POST', body: JSON.stringify(body) });
@@ -358,6 +390,12 @@ async function createRequest(e) {
     try {
         const fd = new FormData(e.target);
         const body = Object.fromEntries(fd);
+      if (body.route) {
+    const [origin, destination] = body.route.split(' → ');
+    body.origin = origin;
+    body.destination = destination;
+    delete body.route;
+}
         body.people = parseInt(body.people) || 1;
         body.consent = !!body.consent;
         const data = await api('/api/ride-requests', { method: 'POST', body: JSON.stringify(body) });

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+*.db
+*.sqlite3
+travelboard_v3.db
+.DS_Store
+desktop.ini

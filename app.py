@@ -151,9 +151,12 @@ TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverif
 def verify_turnstile(token):
     """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
     if not TURNSTILE_SECRET_KEY:
-        return True
+    return True
     if not token:
-        return True
+    return False   # was True
+# ...
+except Exception:
+    return False   # was True
     try:
         import urllib.request
         import urllib.parse

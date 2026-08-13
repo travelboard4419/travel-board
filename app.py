@@ -1175,6 +1175,7 @@ def legal(page):
 # ========== FRONTEND ==========
 
 @app.route('/admin')
+@admin_required
 def admin_page():
     return render_template('admin.html')
 

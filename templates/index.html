@@ -124,8 +124,17 @@ footer a:hover{text-decoration:underline}
 <div id="journey-alert" class="alert"></div>
 <form id="journey-form">
 <div class="form-row">
-<div class="form-group"><label>От</label><select name="origin" required><option value="">Избери...</option><option>Црънча</option><option>Пазарджик</option></select></div>
-<div class="form-group"><label>До</label><select name="destination" required><option value="">Избери...</option><option>Црънча</option><option>Пазарджик</option></select></div>
+<div class="form-group">
+  <label>Маршрут</label>
+  <select name="route" required>
+    <option value="">Избери...</option>
+    <option>Паталеница → Пазарджик</option>
+    <option>Црънча → Пазарджик</option>
+    <option>Дебращица → Пазарджик</option>
+    <option>Пазарджик → Паталеница</option>
+    <option>Пазарджик → Црънча</option>
+    <option>Пазарджик → Дебращица</option>
+  </select>
 </div>
 <div class="form-row">
 <div class="form-group"><label>Дата</label><input type="date" name="date" required id="journey-date"></div>

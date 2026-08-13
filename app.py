@@ -327,12 +327,12 @@ def check_recent_duplicate(c, table, origin, destination, date_str, time_str, ph
     if table not in ('journeys', 'ride_requests'):
         return False
     since = datetime.utcnow() - timedelta(minutes=window_minutes)
-    c.execute(f"""
-        SELECT id FROM {table}
+    c.execute(sql.SQL("""
+        SELECT id FROM {}
         WHERE origin = %s AND destination = %s AND date = %s AND time = %s
         AND contact_phone = %s AND created_at > %s
         LIMIT 1
-    """, (origin, destination, date_str, time_str, phone, since))
+    """).format(sql.Identifier(table)), (origin, destination, date_str, time_str, phone, since))
     return c.fetchone() is not None
 
 def validate_id(val):

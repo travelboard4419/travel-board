@@ -172,7 +172,7 @@ except Exception:
             return result.get('success', False)
     except Exception as e:
         logger.error("Turnstile verification error: %s", e)
-        return True
+        return False
 
 # ========== SESSION MANAGEMENT (Server-side, PostgreSQL-backed) ==========
 def create_session(data, expires_hours=2):

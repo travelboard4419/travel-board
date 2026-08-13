@@ -154,6 +154,8 @@ def verify_turnstile(token):
     return True
     def verify_turnstile(token):
     """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
+def verify_turnstile(token):
+    """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
     if not TURNSTILE_SECRET_KEY:
         return True
     if not token:

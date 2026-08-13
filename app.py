@@ -152,8 +152,28 @@ def verify_turnstile(token):
     """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
     if not TURNSTILE_SECRET_KEY:
     return True
+    def verify_turnstile(token):
+    """Verify Cloudflare Turnstile token. Fail-open if not configured or on error."""
+    if not TURNSTILE_SECRET_KEY:
+        return True
     if not token:
-    return False   # was True
+        return True
+    try:
+        import urllib.request
+        import urllib.parse
+        data = urllib.parse.urlencode({
+            'secret': TURNSTILE_SECRET_KEY,
+            'response': token
+        }).encode()
+        req = urllib.request.Request(TURNSTILE_VERIFY_URL, data=data, method='POST')
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            result = json.loads(resp.read())
+            if not result.get('success'):
+                logger.warning("Turnstile verification failed: %s", result.get('error-codes'))
+            return result.get('success', False)
+    except Exception as e:
+        logger.error("Turnstile verification error: %s", e)
+        return True
 # ...
 except Exception:
     return False   # was True
